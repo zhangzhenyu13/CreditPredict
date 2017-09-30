@@ -1,6 +1,13 @@
+'''
+this module is aimed to provide better data management
+use Data Object to manage data
+use labelTransform to get useful labels which are served as Y in train phase
+use puerAttrs to serve as X in train phase
+'''
 import csv
 from xml.dom.minidom import parse
 import xml.dom.minidom
+
 class Data(object):
     TestDataIgnoreStrIndex=[]
     TrainDataIgnoreStrIndex=[]
@@ -47,6 +54,25 @@ class Data(object):
                     pass
 
         return  data
+    def labelTransform(self,data):
+        #this function is aimed at transform the label,which is 0/1, to be a 2-dim vector
+        #if label of data is 1,which means bad, then label vector will be [0,1]
+        #when it's 0,which means good, then label vector will be [1,0]
+        #the return can be regarded as Y
+        labels=[]
+        for record in data:
+            act=record[len(record)-1]
+            if act==0:
+                labels.append([1,0])
+            else:
+                labels.append([0,1])
+        return labels
+    def pureAttrs(self,dataSet):
+        #delete the target attibute of each record so that the return is served as X
+        index=len(dataSet[0])-1
+        for record in dataSet:
+            del record[index]
+        return dataSet
 class UserTrainData(Data):
     dataSet=None
     dataSize=0
@@ -64,7 +90,7 @@ class UserTrainData(Data):
             self.dataSet=[row[1:] for row in reader]
             del self.dataSet[0]
             self.dataSize=len(self.dataSet)
-
+            self.dataSet=self.parseNumAtr(self.dataSet,True)
             print("dataSize=%d,file=%s"%(self.dataSize,file))
             f.close()
     def nextBatch(self,dataSize=None):
@@ -98,21 +124,32 @@ class UserTestData(Data):
             self.testData=[row[1:] for row in reader]
             del self.testData[0]
             self.testSize=len(self.testData)
+            self.testData=self.parseNumAtr(self.testData,False)
             print("dataSize=%d,file=%s"%(self.testSize,file))
             f.close()
     def getData(self):
         return self.testData
 
-#test for func
+#navie test for the correctness
 def main():
+    #test train data interface
     data=UserTrainData('../data/train.csv')
+    traindata=data.nextBatch(10)
+    #traindata=data.parseNumAtr(traindata,True)
 
+    labels=data.labelTransform(traindata)
+
+    for l in labels:
+        print(l)
     for i in range(10):
-        print(data.nextBatch(1))
-
+        print(traindata[i])
+    traindata = data.pureAttrs(traindata)
+    for i in range(10):
+        print(traindata[i])
+    #test testdata interface
     test = UserTestData('../data/test.csv')
     testdata=test.getData()
-    testdata=test.parseNumAtr(testdata,train=False)
+    #testdata=test.parseNumAtr(testdata,train=False)
     for i in range(10):
         print(testdata[i])
 if __name__=="__main__":

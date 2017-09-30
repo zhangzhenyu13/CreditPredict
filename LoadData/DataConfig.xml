@@ -1,0 +1,4 @@
+<config>
+    <TestDataIgnoreStrIndex>18,19,20,21,22,23,24,44,123,124,125</TestDataIgnoreStrIndex>
+    <TrainDataIgnoreStrIndex>18,19,20,21,22,23,24,44,123,124,125</TrainDataIgnoreStrIndex>
+</config>

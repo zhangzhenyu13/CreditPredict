@@ -1,14 +1,27 @@
 import csv
-class Data:
-    TestDataStrIndex=[18,19,20,21,22,23,24,44,123,124,125]
-    TrainDataStrIndex=[18,19,20,21,22,23,24,44,123,124,125]
+from xml.dom.minidom import parse
+import xml.dom.minidom
+class Data(object):
+    TestDataIgnoreStrIndex=[]
+    TrainDataIgnoreStrIndex=[]
     def __init__(self,file=None):
         '''
         the base is for settings
         load data from csv file
         if file is None, init a null dataSet
         '''
-
+        # READ PARAMETERS FROM DataConfig.XML
+        #Ignore Attibute Index
+        DOMTree = xml.dom.minidom.parse("DataConfig.xml")
+        config = DOMTree.documentElement
+        testIndex = config.getElementsByTagName("TestDataIgnoreStrIndex")[0].firstChild.data
+        trainIndex = config.getElementsByTagName("TrainDataIgnoreStrIndex")[0].firstChild.data
+        testIndex=testIndex.split(',')
+        trainIndex=trainIndex.split(',')
+        self.TestDataIgnoreStrIndex=[eval(a) for a in testIndex]
+        self.TrainDataIgnoreStrIndex=[eval(a) for a in trainIndex]
+        #print(self.TestDataIgnoreStrIndex,self.TrainDataIgnoreStrIndex)
+        #
     def nextBatch(self,dataSize=None):
         '''
         if dataSize is None, then return all the data
@@ -26,10 +39,10 @@ class Data:
                     record[i]=x
                 except:
                     if train:
-                        if i not in self.TrainDataStrIndex:
+                        if i not in self.TrainDataIgnoreStrIndex:
                             record[i]=None
                     else:
-                        if i not in self.TestDataStrIndex:
+                        if i not in self.TestDataIgnoreStrIndex:
                             record[i]=None
                     pass
 
@@ -40,7 +53,7 @@ class UserTrainData(Data):
     __cur=0
     def __init__(self,file=None):
         print("Train Data")
-        Data.__init__(file)
+        Data.__init__(self,file)
         if file is None:
             print("dataSize=%d,file=%s" % (0, file))
             pass
@@ -74,7 +87,7 @@ class UserTestData(Data):
     testSize=0
     def __init__(self,file):
         print("Test data")
-        Data.__init__(file)
+        super(UserTestData,self).__init__(file)
         if file is None:
             print("dataSize=%d,file=%s" % (0, file))
             pass
@@ -89,6 +102,8 @@ class UserTestData(Data):
             f.close()
     def getData(self):
         return self.testData
+
+#test for func
 def main():
     data=UserTrainData('../data/train.csv')
 

@@ -40,6 +40,12 @@ class Data(object):
         i=0
         for record in data:
             for i in  range(len(record)):
+                if train:
+                    if i  in self.TrainDataIgnoreStrIndex:
+                        continue
+                else:
+                    if i in self.TestDataIgnoreStrIndex:
+                        continue
                 try:
                     a=record[i]
                     x=eval(a)

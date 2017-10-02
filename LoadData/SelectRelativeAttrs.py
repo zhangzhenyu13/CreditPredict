@@ -1,6 +1,6 @@
 from LoadData.UserRecord import *
 import math
-
+import helper.personalizedSort
 
 def getColume(colIndex,data):
     #get a colume of data at colIndex
@@ -8,6 +8,12 @@ def getColume(colIndex,data):
     for r in data:
         col.append(r[colIndex])
     return col
+
+def getColType(col):
+    for _ in col:
+        if _ != None:
+            return type(_)
+    return None
 
 def mean(col):
     #cal mean
@@ -80,25 +86,27 @@ def valueTypeRcheck(col1,col2):
     #return a value r which lies between -1 and 1
     #0 means unrelated,1 is positive relation
     #-1 is negative relative
-    n=len(col1)
+    n=0
     avg1=mean(col1)
     avg2=mean(col2)
     var1=variance(col1,avg1)
     var2=variance(col2,avg2)
     #print('mean1,mean2,var1,var2',avg1,avg2,var1,var2 )
+    if var1==0.0 or var2==0.0:
+        #constant value ignored
+        return 0.0
     ys=0.0
     for i in range(n):
         if col1[i] is not None and col2[i] is not None:
             ys=ys+col1[i]*col2[i]
-    if var1==0.0 or var2==0.0:
-        #constant value ignored
-        return 0.0
+            n=n+1
+    
     r12=(ys-n*avg1*avg2)/(n*var1*var2)
     return r12
 
-def Rlist(data,minR=0.02,maxR=0.5):
+def Rlist(data,minR=0.01,maxR=0.95):
     #select the most related attributes
-    rmL=[]
+    rmL=set()
     relation=[]
     #rm those that unrelated to the list
     indexLable=len(data[0])-1
@@ -108,13 +116,7 @@ def Rlist(data,minR=0.02,maxR=0.5):
     col2=[]
     for i in range(indexLable):
         col=getColume(i,data)
-        tag=True
-        for _ in col:
-            if _!=None:
-                if type(_)==str:
-                    tag=False
-                break
-        if tag==False:
+        if getColType(col)==str:
             continue
 
         r=valueTypeRcheck(col,label)
@@ -122,40 +124,40 @@ def Rlist(data,minR=0.02,maxR=0.5):
     #relation=mergeSort2(relation)
     for _ in relation:
         if _[2]<minR:
-            rmL.append(_[0])
+            rmL.add(_[0])
     #between attrs,rm those unrelated
     for i in range(indexLable):
         if i in rmL:
             continue
-        for j in range(indexLable):
+        for j in range(i+1,indexLable):
             if j in rmL or j==i:
                 continue
             #attach those attr
             relation=[]
             col1 = getColume(i, data)
             col2=getColume(j,data)
-            tag = True
-            for _ in col:
-                if _ != None:
-                    if type(_) == str:
-                        tag = False
-                    break
-            if tag == False:
+
+            #make sure type of col1 and col2
+            if getColType(col1)==str or getColType(col2)==str:
                 continue
 
-            r = valueTypeRcheck(col, label)
-            relation.append([i, indexLable, abs(r)])
-        #relation=mergeSort2(relation)
+            r = valueTypeRcheck(col1,col2)
+            relation.append([i, j, abs(r)])
+
         #rm those attr that high related to another and owns lots of None
+        relation=helper.personalizedSort.mergeSort2(relation)
         for _ in relation:
             if _[2]>maxR:
                 nc1=nullCounter(getColume(_[0],data),len(data))
                 nc2=nullCounter(getColume(_[1],data),len(data))
-                if nc1<=nc2:
-                    rmL.append(_[0])
+                if nc1>nc2:
+                    rmL.add(_[0])
+                    break
                 else:
-                    rmL.append(_[1])
-    print(rmL)
+                    rmL.add(_[1])
+    rmL=list(rmL)
+    rmL=helper.personalizedSort.quickSort2(rmL)
+    print(len(rmL),rmL)
     return rmL
 #test
 def main():
@@ -164,7 +166,8 @@ def main():
     sparseIndex=sparseCols(data)
     print('SparseIndex(%d)'%(len(sparseIndex)),sparseIndex)
     data=removeSparseCols(data,sparseIndex)
-    Rlist(data)
+    rmL=Rlist(data)
+    rmCols(data,rmL)
     '''
     for i in range(len(data[0])-1):
         col1=getColume(i,data)

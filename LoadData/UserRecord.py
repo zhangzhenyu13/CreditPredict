@@ -142,10 +142,10 @@ def main():
     for l in labels:
         print(l)
     for i in range(10):
-        print(traindata[i])
+        print(len(traindata[i]))
     traindata = data.pureAttrs(traindata)
     for i in range(10):
-        print(traindata[i])
+        print(len(traindata[i]))
     #test testdata interface
     test = UserTestData('../data/test.csv')
     testdata=test.getData()

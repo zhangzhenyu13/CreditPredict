@@ -86,7 +86,7 @@ def valueTypeRcheck(col1,col2):
     #return a value r which lies between -1 and 1
     #0 means unrelated,1 is positive relation
     #-1 is negative relative
-    n=0
+    n=len(col1)
     avg1=mean(col1)
     avg2=mean(col2)
     var1=variance(col1,avg1)
@@ -99,11 +99,21 @@ def valueTypeRcheck(col1,col2):
     for i in range(n):
         if col1[i] is not None and col2[i] is not None:
             ys=ys+col1[i]*col2[i]
-            n=n+1
-    
+
     r12=(ys-n*avg1*avg2)/(n*var1*var2)
     return r12
-
+def loadRlist():
+    rmL=[]
+    with open('rmList','r') as f:
+        s=f.read()
+        ss=s.split(',')
+        for s in ss:
+            try:
+                i=eval(s)
+                rmL.append(i)
+            except:
+                break
+    return rmL
 def Rlist(data,minR=0.01,maxR=0.95):
     #select the most related attributes
     rmL=set()
@@ -125,6 +135,7 @@ def Rlist(data,minR=0.01,maxR=0.95):
     for _ in relation:
         if _[2]<minR:
             rmL.add(_[0])
+    #print('unrelated with target',len(rmL),rmL)
     #between attrs,rm those unrelated
     for i in range(indexLable):
         if i in rmL:
@@ -155,19 +166,26 @@ def Rlist(data,minR=0.01,maxR=0.95):
                     break
                 else:
                     rmL.add(_[1])
+        #print('iter %d'%(i),len(rmL),rmL)
     rmL=list(rmL)
     rmL=helper.personalizedSort.quickSort2(rmL)
-    print(len(rmL),rmL)
+    #print(len(rmL),rmL)
+    with open("rmList","w") as f:
+        for i in rmL:
+            f.write(str(i)+",")
+        f.close()
     return rmL
 #test
 def main():
     mydata=UserTrainData('../data/train.csv')
-    data=mydata.nextBatch()
+    data=mydata.nextBatch(100)
     sparseIndex=sparseCols(data)
     print('SparseIndex(%d)'%(len(sparseIndex)),sparseIndex)
     data=removeSparseCols(data,sparseIndex)
     rmL=Rlist(data)
     rmCols(data,rmL)
+    rmL=loadRlist()
+    print(rmL)
     '''
     for i in range(len(data[0])-1):
         col1=getColume(i,data)

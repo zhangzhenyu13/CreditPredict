@@ -83,12 +83,16 @@ class UserTrainData(Data):
     dataSet=None
     dataSize=0
     __cur=0
+
     def __init__(self,file=None):
         print("Train Data")
         Data.__init__(self,file)
         if file is None:
             print("dataSize=%d,file=%s" % (0, file))
             pass
+        elif type(file)==list:
+            self.dataSet = file
+            self.dataSize = len(file)
         else:
             f=open(file,"r")
             #print(f.read())

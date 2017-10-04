@@ -1,5 +1,5 @@
-from LoadData.SelectRelativeAttrs import *
-
+from helper.DataMP import *
+from LoadData.UserRecord import *
 def PresenceCounter(col):
     counter={}
 
@@ -59,6 +59,7 @@ def StrEncode(counters,data):
         setValuesStr(counters[i],i,data)
 def getCounters(mydata):
     counters = {}
+
     data=mydata.dataSet
     for sAttr in mydata.TrainDataIgnoreStrIndex:
         col = getColume(sAttr, data)

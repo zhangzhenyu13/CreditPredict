@@ -1,3 +1,4 @@
-def fillSparseCols(data,sparseIndex):
-    #using the predicting methods to fill in the missing value of a record
+def fillColsMode(data,sparseIndex):
+    #using the mode of the colume to fill in the missing value of a record
+
     pass

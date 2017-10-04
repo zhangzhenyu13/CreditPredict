@@ -9,6 +9,7 @@ from xml.dom.minidom import parse
 import xml.dom.minidom
 
 class Data(object):
+    usefulAttr=0
     TestDataIgnoreStrIndex=[]
     TrainDataIgnoreStrIndex=[]
     def __init__(self,file=None):
@@ -75,21 +76,28 @@ class Data(object):
         return labels
     def pureAttrs(self,dataSet):
         #delete the target attibute of each record so that the return is served as X
+        data=[]
         index=len(dataSet[0])-1
         for record in dataSet:
-            del record[index]
-        return dataSet
+            data.append(record[0:index])
+        return data
+    def getRunTuple(self,dataBatch):
+        Y = self.labelTransform(dataBatch)
+        X = self.pureAttrs(dataBatch)
+        return (X, Y)
 class UserTrainData(Data):
     dataSet=None
     dataSize=0
     __cur=0
-
+    __curXY=0
+    X=None
+    Y=None
     def __init__(self,file=None):
         print("Train Data")
         Data.__init__(self,file)
         if file is None:
             print("dataSize=%d,file=%s" % (0, file))
-            pass
+            return
         elif type(file)==list:
             self.dataSet = file
             self.dataSize = len(file)
@@ -103,6 +111,8 @@ class UserTrainData(Data):
             self.dataSet=self.parseNumAtr(self.dataSet,True)
             print("dataSize=%d,file=%s"%(self.dataSize,file))
             f.close()
+    def initXY(self):
+        self.X, self.Y = self.getRunTuple(self.dataSet)
     def nextBatch(self,dataSize=None):
         if dataSize is None:
             return self.dataSet
@@ -115,12 +125,31 @@ class UserTrainData(Data):
         else:
             num_left=dataSize-(self.dataSize-self.__cur)
             data=self.dataSet[self.__cur:]
-            data=data+self.dataSize[0:num_left]
+            data=data+self.dataSet[0:num_left]
             self.__cur=num_left
         return data
+    #next X,Y
+    def nextXY(self,dataSize):
+        x=[]
+        y=[]
+        if self.__curXY+dataSize<=self.dataSize:
+            x= self.X[self.__curXY:self.__curXY+dataSize]
+            y=self.Y[self.__curXY:self.__curXY+dataSize]
+            self.__curXY=self.__curXY+dataSize
+            if self.__curXY==self.dataSize:
+                self.__curXY=0
+        else:
+            num_left=dataSize-(self.dataSize-self.__curXY)
+            x=self.X[self.__curXY:]
+            y=self.Y[self.__curXY:]
+            x=x+self.X[0:num_left]
+            y=y+self.Y[0:num_left]
+            self.__curXY=num_left
+        return (x,y)
+
 class UserTestData(Data):
-    testData=None
-    testSize=0
+    dataSet=None
+    dataSize=0
     def __init__(self,file):
         print("Test data")
         super(UserTestData,self).__init__(file)
@@ -131,14 +160,14 @@ class UserTestData(Data):
             f=open(file,"r")
             #print(f.read())
             reader=csv.reader(f)
-            self.testData=[row[1:] for row in reader]
-            del self.testData[0]
-            self.testSize=len(self.testData)
-            self.testData=self.parseNumAtr(self.testData,False)
-            print("dataSize=%d,file=%s"%(self.testSize,file))
+            self.dataSet=[row[1:] for row in reader]
+            del self.dataSet[0]
+            self.dataSize=len(self.dataSet)
+            self.dataSet=self.parseNumAtr(self.dataSet,False)
+            print("dataSize=%d,file=%s"%(self.dataSize,file))
             f.close()
     def getData(self):
-        return self.testData
+        return self.dataSet
 
 #navie test for the correctness
 def main():

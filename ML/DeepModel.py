@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 import time
 import xml.dom.minidom as xmlparser
-
+from LoadData.SelectRelativeAttrs import *
 
 #load net structure from file
 def readnetStructure(inDim,outDim):
@@ -72,13 +72,13 @@ def multi_perceptron(trainData,validData,testData):
     model=tf.nn.sigmoid(tf.matmul(H[len(b)-2],W[len(b)-1])+B[len(b)-1])
     model=tf.nn.dropout(model,keep_prob)
     #error define
-    errorLayer=tf.Variable(tf.constant(value=[model,1/(model+0.001)]),trainable=False)
-
-    loss=tf.reduce_sum(tf.square(y*errorLayer))
+    #errorLayer=tf.Variable(tf.constant([model,1/(model+0.001)]),trainable=False)
+    errorLayer=model*tf.slice(y,[0,0],[-1,1])+tf.slice(y,[0,1],[-1,1])/(model+0.001)
+    loss=tf.reduce_sum(tf.square(errorLayer))
     train_step=tf.train.GradientDescentOptimizer(learning_rate=learnRate).minimize(loss)
     #test Graph
 
-    predict=(tf.abs(model-y)<1)
+    predict=(tf.abs(model-tf.cast(tf.arg_max(y,1),tf.float32))<0.01)
     correctPrediction=tf.reduce_sum(tf.cast(predict,tf.float32))
 
 
@@ -127,15 +127,22 @@ def main():
     testData = UserTestData('../data/test.csv')
     #model train data
     mydata=UserTrainData('../data/train.csv')
+    #preprocessing
+    rmL=loadRlist()
+    mydata.dataSet=rmCols(mydata.dataSet,rmL)
+    testData.testData=rmCols(testData.testData,rmL)
+    #split 0.8 0.2
     ratio=0.8
-    n=int(len(mydata.dataSize)*ratio)
+    n=int(len(mydata.dataSet)*ratio)
     tdata=mydata.dataSet[n:]
     mydata.dataSize=n
     mydata.dataSet=mydata.dataSet[0:n]
     traindata=mydata
     validdata=UserTrainData(tdata)
+    #begin
+    print('data prepared')
     multi_perceptron(traindata,validdata,testData)
 
 
 if __name__=="__main__":
-    multi_perceptron()
+    main()

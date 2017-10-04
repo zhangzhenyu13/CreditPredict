@@ -1,7 +1,7 @@
 from LoadData.UserRecord import *
 import math
 import helper.personalizedSort
-
+from LoadData.StrEncoder import *
 def getColume(colIndex,data):
     #get a colume of data at colIndex
     col=[]
@@ -41,7 +41,7 @@ def variance(col,avg):
         sumx2=sumx2/n
     return math.sqrt(sumx2-avg*avg)
 
-def nullCounter(col,n):
+def nullCounter(col):
     #count None number
     count=0
     for r in col:
@@ -49,7 +49,12 @@ def nullCounter(col,n):
             #print("None",r)
             count=count+1
     return count
-
+def nullCounter2(index,data):
+    count=0
+    for x in data:
+        if x[index] is None:
+            count=count+1
+    return count
 def sparseCols(data,sparseRate=0.3):
     #given a sparseRate,filter those data
     indexList=[]
@@ -57,7 +62,7 @@ def sparseCols(data,sparseRate=0.3):
     n=len(data)
     for i in range(attrdim):
         col=getColume(i,data)
-        nullsum=nullCounter(col,n)
+        nullsum=nullCounter(col)
         if n*sparseRate<nullsum:
             #print(n,nullsum,i)
             indexList.append(i)
@@ -73,19 +78,13 @@ def rmCols(data,indexL):
                 a.append(record[i])
         newdata.append(a)
     return newdata
-def removeSparseCols(data,sparseIndex):
-    #legacy support
-    return rmCols(data,sparseIndex)
 
-def fillSparseCols(data,sparseIndex):
-    #using the predicting methods to fill in the missing value of a record
-    pass
 
 def valueTypeRcheck(col1,col2):
     #Pearson check
     #return a value r which lies between -1 and 1
     #0 means unrelated,1 is positive relation
-    #-1 is negative relative
+    #1 is negative relative
     n=len(col1)
     avg1=mean(col1)
     avg2=mean(col2)
@@ -104,7 +103,7 @@ def valueTypeRcheck(col1,col2):
     return r12
 def loadRlist():
     rmL=[]
-    with open('rmList','r') as f:
+    with open('../data/rmList','r') as f:
         s=f.read()
         ss=s.split(',')
         for s in ss:
@@ -114,19 +113,20 @@ def loadRlist():
             except:
                 break
     return rmL
-def Rlist(data,minR=0.01,maxR=0.95):
+def Rlist(rmL,data,minR=0.01,maxR=0.95):
     #select the most related attributes
-    rmL=set()
+    rmL=set(rmL)
     relation=[]
-    #rm those that unrelated to the list
-    indexLable=len(data[0])-1
-    label = getColume(indexLable-1, data)
-    col=[]
-    col1=[]
-    col2=[]
+    indexLable = len(data[0]) - 1
+    label = getColume(indexLable - 1, data)
+    col = []
+    col1 = []
+    col2 = []
+#rm those that unrelated to the list
+
     for i in range(indexLable):
         col=getColume(i,data)
-        if getColType(col)==str:
+        if i in rmL:
             continue
 
         r=valueTypeRcheck(col,label)
@@ -135,8 +135,10 @@ def Rlist(data,minR=0.01,maxR=0.95):
     for _ in relation:
         if _[2]<minR:
             rmL.add(_[0])
-    #print('unrelated with target',len(rmL),rmL)
-    #between attrs,rm those unrelated
+    print('unrelated with target',len(rmL),rmL)
+
+#between attrs,rm those unrelated
+
     for i in range(indexLable):
         if i in rmL:
             continue
@@ -148,10 +150,6 @@ def Rlist(data,minR=0.01,maxR=0.95):
             col1 = getColume(i, data)
             col2=getColume(j,data)
 
-            #make sure type of col1 and col2
-            if getColType(col1)==str or getColType(col2)==str:
-                continue
-
             r = valueTypeRcheck(col1,col2)
             relation.append([i, j, abs(r)])
 
@@ -159,18 +157,18 @@ def Rlist(data,minR=0.01,maxR=0.95):
         relation=helper.personalizedSort.mergeSort2(relation)
         for _ in relation:
             if _[2]>maxR:
-                nc1=nullCounter(getColume(_[0],data),len(data))
-                nc2=nullCounter(getColume(_[1],data),len(data))
+                nc1=nullCounter2(_[0],data)
+                nc2=nullCounter2(_[1],data)
                 if nc1>nc2:
                     rmL.add(_[0])
                     break
                 else:
                     rmL.add(_[1])
-        #print('iter %d'%(i),len(rmL),rmL)
+        print('iter %d'%(i),len(rmL),rmL)
     rmL=list(rmL)
     rmL=helper.personalizedSort.quickSort2(rmL)
     #print(len(rmL),rmL)
-    with open("rmList","w") as f:
+    with open("../data/rmList","w") as f:
         for i in rmL:
             f.write(str(i)+",")
         f.close()
@@ -178,14 +176,19 @@ def Rlist(data,minR=0.01,maxR=0.95):
 #test
 def main():
     mydata=UserTrainData('../data/train.csv')
-    data=mydata.nextBatch(100)
+    print('encodeStr')
+    StrEncode(getCounters(mydata),mydata.dataSet)
+    print('finished %d'%(len(mydata.dataSet)))
+    data=mydata.nextBatch()
     sparseIndex=sparseCols(data)
-    print('SparseIndex(%d)'%(len(sparseIndex)),sparseIndex)
-    data=removeSparseCols(data,sparseIndex)
-    rmL=Rlist(data)
+    print('SparseIndex(%d):total(%d)'%(len(sparseIndex),len(data[0])),sparseIndex)
+    rmL=sparseIndex#+mydata.TrainDataIgnoreStrIndex
+    print('totalRM(%d)' % (len(rmL)), rmL)
+    rmL=Rlist(rmL,data)
+
     rmCols(data,rmL)
     rmL=loadRlist()
-    print(rmL)
+    print('totalRM(%d)'%(len(rmL)),rmL)
     '''
     for i in range(len(data[0])-1):
         col1=getColume(i,data)

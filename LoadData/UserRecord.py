@@ -19,7 +19,7 @@ class Data(object):
         '''
         # READ PARAMETERS FROM DataConfig.XML
         #Ignore Attibute Index
-        DOMTree = xml.dom.minidom.parse("DataConfig.xml")
+        DOMTree = xml.dom.minidom.parse("../data/DataConfig.xml")
         config = DOMTree.documentElement
         testIndex = config.getElementsByTagName("TestDataIgnoreStrIndex")[0].firstChild.data
         trainIndex = config.getElementsByTagName("TrainDataIgnoreStrIndex")[0].firstChild.data

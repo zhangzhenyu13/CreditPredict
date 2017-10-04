@@ -148,7 +148,8 @@ class UserTrainData(Data):
         return (x,y)
 
 class UserTestData(Data):
-    dataSet=None
+    dataSet=[]
+    IDset=[]
     dataSize=0
     def __init__(self,file):
         print("Test data")
@@ -160,8 +161,11 @@ class UserTestData(Data):
             f=open(file,"r")
             #print(f.read())
             reader=csv.reader(f)
-            self.dataSet=[row[1:] for row in reader]
+            for row in reader:
+                self.dataSet.append( row[1:])
+                self.IDset.append(row[0])
             del self.dataSet[0]
+            del self.IDset[0]
             self.dataSize=len(self.dataSet)
             self.dataSet=self.parseNumAtr(self.dataSet,False)
             print("dataSize=%d,file=%s"%(self.dataSize,file))

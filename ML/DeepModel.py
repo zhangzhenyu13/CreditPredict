@@ -6,6 +6,7 @@ import xml.dom.minidom as xmlparser
 from LoadData.SelectRelativeAttrs import *
 from LoadData.StrEncoder import *
 from LoadData.fillStrategy import *
+import pandas as pd
 #load net structure from file
 def readnetStructure(inDim,outDim):
     print("netWorks Structure")
@@ -43,7 +44,7 @@ def multi_perceptron(trainData,validData,testData):
     xt,yt=validData.getRunTuple(validData.dataSet)
 #def Learning parameters
     learnRate = 0.1
-    batchSize = 50
+    batchSize = 100
     iterationNum = 1000
     inDim=len(xt[0])
     outDim=1
@@ -74,82 +75,87 @@ def multi_perceptron(trainData,validData,testData):
     #errorLayer=tf.Variable(tf.constant([model,1/(model+0.001)]),trainable=False)
     errorLayer=model*tf.slice(y,[0,0],[-1,1])+tf.slice(y,[0,1],[-1,1])/(model+0.01)
     loss=tf.reduce_sum(tf.square(errorLayer))
-    train_step=tf.train.AdadeltaOptimizer(learning_rate=learnRate).minimize(loss)
+    train_step=tf.train.AdamOptimizer(learning_rate=learnRate).minimize(loss)
 # correctness counter
-    predict=(tf.abs(model-tf.cast(tf.slice(y,[0,1],[-1,1]),tf.float32))<0.01)
+    predict=(tf.abs(model-tf.cast(tf.slice(y,[0,1],[-1,1]),tf.float32))<0.1)
     correctPrediction=tf.reduce_sum(tf.cast(predict,tf.float32))
-
+    accuracy=tf.reduce_mean(tf.cast(predict,tf.float32))
 #begin train
-    print("init variables")
 
-    init=tf.global_variables_initializer()
-    sess=tf.Session()
-    sess.run(init)
+    with tf.Session() as sess:
+        print("init variables")
+        init=tf.global_variables_initializer()
+        #sess=tf.Session()
+        sess.run(init)
 
-    '''#/debug
-    batchX, batchY = trainData.nextXY(10)
-    print(sess.run(y,feed_dict={y:batchY}))
-    print(sess.run(tf.slice(y,[0,0],[-1,1]),feed_dict={y:batchY}))
-    print(sess.run(tf.slice(y,[0,1],[-1,1]),feed_dict={y:batchY}))
-    #debug/'''
+        '''#/debug
+        batchX, batchY = trainData.nextXY(10)
+        print(sess.run(y,feed_dict={y:batchY}))
+        print(sess.run(tf.slice(y,[0,0],[-1,1]),feed_dict={y:batchY}))
+        print(sess.run(tf.slice(y,[0,1],[-1,1]),feed_dict={y:batchY}))
+        #debug/'''
 
-    print("running multi-layer perceptrons")
-    t1=time.time()
-    prevtestAcc=0.0
-    stableCounter=0#count check times for stable status
-    maxCheck=1#def max check time for stable status
-    #test before
-    print("before train")
-    acctest = sess.run(correctPrediction, feed_dict={x: xt, y: yt,keep_prob:1.0}) / len(yt)
-    print("test accuracy=%f" % (acctest))
-    #begin train model
-    for i in range(iterationNum):
-        batchX,batchY=trainData.nextXY(batchSize)
+        prevtestAcc=0.0
+        stableCounter=0#count check times for stable status
+        maxCheck=1#def max check time for stable status
+        #test before
+        print("before train")
+        sum=correctPrediction.eval(feed_dict={x: xt, y: yt,keep_prob:1.0})
+        print("test accuracy=%f" % (sum))
+        #begin train model
+        print("running multi-layer perceptrons")
+        t1 = time.time()
+        for i in range(iterationNum):
+            batchX,batchY=trainData.nextXY(batchSize)
 
 
-        if i % 50 == 0:
-            print("step %d" % (i))
-        '''
-            acctest=sess.run(correctPrediction,feed_dict={x:xt,y:yt,keep_prob:1.0})/len(yt)
-            print("test accuracy=%f"%(acctest))
-            acctrain = sess.run(correctPrediction, feed_dict={x: batchX, y:batchY,keep_prob:1.0}) / len(batchX)
-            print("train accuracy=%f" % (acctrain))
+            if i % 50 == 0:
+                print("step %d" % (i))
 
-            if abs(prevtestAcc-acctest)<0.01:
-                stableCounter = stableCounter + 1
-                if stableCounter>maxCheck:
-                    break
+                acctest=accuracy.eval(feed_dict={x:xt,y:yt,keep_prob:1.0})
+                print("test accuracy=%2.2f"%(acctest))
+                acctrain = accuracy.eval(feed_dict={x: batchX, y:batchY,keep_prob:1.0})
+                print("train accuracy=%2.2f" % (acctrain))
 
-            prevtestAcc=acctest
-        '''
-        sess.run(train_step, feed_dict={x: batchX, y: batchY, keep_prob: 0.5})
-    t2=time.time()
-    print("finished in",t2-t1,"s")
+                if abs(prevtestAcc-acctest)<0.01:
+                    stableCounter = stableCounter + 1
+                    if stableCounter>maxCheck:
+                        break
+    
+                prevtestAcc=acctest
 
-    correctNum=sess.run(correctPrediction,feed_dict={x:xt,y:yt,keep_prob:1.0})
+            sess.run(train_step, feed_dict={x: batchX, y: batchY, keep_prob: 0.5})
+        t2=time.time()
+        print("finished in",t2-t1,"s")
 
-    print("accuracy is as below with learning rate={} and batchSize={}:".format(learnRate,batchSize))
+        correctNum=sess.run(correctPrediction,feed_dict={x:xt,y:yt,keep_prob:1.0})
 
-    print(correctNum,validData.dataSize,correctNum/validData.dataSize)
+        print("accuracy is as below with learning rate={} and batchSize={}:".format(learnRate,batchSize))
 
-    #predict result
-    pm=sess.run(model,feed_dict={x:xt,keep_prob:1.0})
-    pt=sess.run(y,feed_dict={y:yt})
-    for i in range(20):
-        print(pm[i],pt[i])
-    result=sess.run(model,feed_dict={x:testData.dataSet,keep_prob:1.0})
+        print(correctNum,validData.dataSize,correctNum/validData.dataSize)
+
+        #predict result
+        pm=sess.run(model,feed_dict={x:xt,keep_prob:1.0})
+        pt=sess.run(y,feed_dict={y:yt})
+        for i in range(20):
+            print(pm[i],pt[i])
+
+        if testData is None:
+            return
+        result=sess.run(model,feed_dict={x:testData.dataSet,keep_prob:1.0})
     writePreiction(result,testData.IDset)
 #write predicton result
 def writePreiction(result,IDset):
     predict=[]
-    print(len(result),len(IDset))
+    #print(result)
+    #print(len(result),len(IDset))
     for i in range(len(result)):
-        predict=[IDset[i],str(result[i])]
+        predict.append([bytes(IDset[i],encoding='utf-8'),bytes("%2.2f"%(result[i][0]),encoding='utf-8')])
+        #print(predict[i])
     f=open('../data/submission.csv','wb')
     writer = csv.writer(f)
-    writer.writerow(['id','predict'])
+    writer.writerow([bytes('id',encoding='utf-8'),bytes('predict',encoding='utf-8')])
     writer.writerows(predict)
-    f.close()
 
 #test
 def main():

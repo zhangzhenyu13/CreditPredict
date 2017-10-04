@@ -1,0 +1,8 @@
+ <!--define hidden layer nodesNum of the network-->
+<ANN>
+    <L0>256</L0>
+    <L1>1024</L1>
+    <L2>2970</L2>
+    <L3>654</L3>
+    <L4>180</L4>
+</ANN>

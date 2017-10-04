@@ -47,7 +47,7 @@ def multi_perceptron(trainData,validData,testData):
     iterationNum = 1000
     inDim=len(xt[0])
     outDim=1
-    bias_p=2#balance the importance of true postive and false negative
+
 #define the Graph
     x=tf.placeholder(tf.float32,[None,inDim],name='X_in')
     y=tf.placeholder(tf.float32,[None,2],name='Y_out')
@@ -73,10 +73,8 @@ def multi_perceptron(trainData,validData,testData):
     model=tf.nn.dropout(model,keep_prob)
 #define error and train goal
     #errorLayer=tf.Variable(tf.constant([model,1/(model+0.001)]),trainable=False)
-    errorLayer1=model*tf.slice(y,[0,0],[-1,1])+bias_p*tf.slice(y,[0,1],[-1,1])/(model+0.01)#care both tp and fp
-    errorLayer2=tf.slice(y,[0,1],[-1,1])/(model+0.01)#care only fp
-    errorLayer3=model*tf.slice(y,[0,0],[-1,1])#care only tp
-    errorLayer=errorLayer2
+    bias_p = 1  # balance the importance of true postive and false negative
+    errorLayer=model*tf.slice(y,[0,0],[-1,1])+bias_p*tf.slice(y,[0,1],[-1,1])/(model+0.1)#care both tp and fp
     loss=tf.reduce_sum(tf.square(errorLayer))
     train_step=tf.train.AdamOptimizer(learning_rate=learnRate).minimize(loss)
 # correctness counter
@@ -100,11 +98,11 @@ def multi_perceptron(trainData,validData,testData):
 
         prevtestAcc=0.0
         stableCounter=0#count check times for stable status
-        maxCheck=1#def max check time for stable status
+        maxCheck=2#def max check time for stable status
         #test before
         print("before train")
         sum=correctPrediction.eval(feed_dict={x: xt, y: yt,keep_prob:1.0})
-        print("test accuracy=%f" % (sum))
+        print("test correctNum=%d" % (sum))
         #begin train model
         print("running multi-layer perceptrons")
         t1 = time.time()
@@ -117,8 +115,8 @@ def multi_perceptron(trainData,validData,testData):
 
                 acctest=accuracy.eval(feed_dict={x:xt,y:yt,keep_prob:1.0})
                 print("test accuracy=%2.2f"%(acctest))
-                acctrain = accuracy.eval(feed_dict={x: batchX, y:batchY,keep_prob:1.0})
-                print("train accuracy=%2.2f" % (acctrain))
+                #acctrain = accuracy.eval(feed_dict={x: batchX, y:batchY,keep_prob:1.0})
+                #print("train accuracy=%2.2f" % (acctrain))
 
                 if abs(prevtestAcc-acctest)<0.01:
                     stableCounter = stableCounter + 1
@@ -137,12 +135,13 @@ def multi_perceptron(trainData,validData,testData):
 
         print(correctNum,validData.dataSize,correctNum/validData.dataSize)
 
-        #predict result
+    #predict result
+        #an example
         pm=sess.run(model,feed_dict={x:xt,keep_prob:1.0})
         pt=sess.run(y,feed_dict={y:yt})
         for i in range(20):
             print(pm[i],pt[i])
-
+    #label of the testData
         if testData is None:
             return
         result=sess.run(model,feed_dict={x:testData.dataSet,keep_prob:1.0})
@@ -163,7 +162,7 @@ def writePreiction(result,IDset):
     writer.writerows(predict)
 
 #test
-def main():
+def prePareData():
     # testdata
     testData = UserTestData('../data/test.csv')
     #model train data
@@ -187,14 +186,13 @@ def main():
     traindata.initXY()
     validdata.initXY()
     #begin
-    for i in range(20):
-        print(traindata.dataSet[i])
+
     print('data prepared:Selected Attribute(%d), train Model(%d),validData(%d)'%
           (len(traindata.X[0]),len(traindata.X),len(validdata.X))
           )
-    multi_perceptron(traindata,validdata,testData)
 
+    return (traindata, validdata, testData)
 
 if __name__=="__main__":
-    main()
-    #writePreiction([[0.1],[0.2],[0.3],[0.4]],['1','2','3','4'])
+    traindata, validdata, testData=prePareData()
+    multi_perceptron(traindata, validdata, testData)

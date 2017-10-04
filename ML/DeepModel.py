@@ -33,6 +33,7 @@ def readnetStructure(inDim,outDim):
         except Exception as e:
             w[i]=[prevNum,outDim]
             b[i]=[outDim]
+            print(layer, ":", w[i], b[i])
             break
 
     return (w,b)
@@ -40,7 +41,7 @@ def readnetStructure(inDim,outDim):
 #deep leanring scheme
 def multi_perceptron(trainData,validData,testData):
     #extract validdata
-    xt,yt=validData.getRunTuple(validData.dataSet)
+    xt,yt=validData.getRunTuple2(validData.dataSet)
 #def Learning parameters
     learnRate = 0.1
     batchSize = 100
@@ -62,24 +63,29 @@ def multi_perceptron(trainData,validData,testData):
     for i in range(len(b)):
 
         W[i]=tf.Variable(tf.truncated_normal(shape=w[i],stddev=0.1))
-        B[i]= tf.Variable(tf.constant(value=0.1, shape=b[i]))
+        B[i]= tf.Variable(tf.truncated_normal(shape=b[i],stddev=0.1))
 
-    H[0]=tf.nn.sigmoid(tf.matmul((x),W[0])+B[0])
+    H[0]=tf.nn.relu(tf.matmul((x),W[0])+B[0])
     for i in range(1,len(b)-1):
         #print(i)
-        H[i]=tf.nn.sigmoid(tf.matmul(H[i-1],W[i])+B[i])
+        H[i]=tf.nn.elu(tf.matmul(H[i-1],W[i])+B[i])
 
-    model=tf.nn.sigmoid(tf.matmul(H[len(b)-2],W[len(b)-1])+B[len(b)-1])
+    model=None
+    if len(b)>=2:
+        model=tf.nn.relu(tf.matmul(H[len(b)-2],W[len(b)-1])+B[len(b)-1])
+    else:
+        model=H[0]
     model=tf.nn.dropout(model,keep_prob)
 #define error and train goal
     #errorLayer=tf.Variable(tf.constant([model,1/(model+0.001)]),trainable=False)
-    bias_p = 1  # balance the importance of true postive and false negative
-    errorLayer=model*tf.slice(y,[0,0],[-1,1])+bias_p*tf.slice(y,[0,1],[-1,1])/(model+0.1)#care both tp and fp
-    loss=tf.reduce_sum(tf.square(errorLayer))
+      # balance the importance of true postive and false positive
+    #errorLayer=tf.matmul(y,model)#care both tp and fp
+    error=tf.slice(y,[0,0],[-1,1])*model+tf.slice(y,[0,1],[-1,1])/(model+1e-8)
+    loss=tf.reduce_sum(tf.square(error))
     train_step=tf.train.AdamOptimizer(learning_rate=learnRate).minimize(loss)
 # correctness counter
-    predict=(tf.abs(model-tf.cast(tf.slice(y,[0,1],[-1,1]),tf.float32))<0.1)
-    correctPrediction=tf.reduce_sum(tf.cast(predict,tf.float32))
+    predict=tf.cast(tf.equal(tf.cast(model>0.5,tf.float32),tf.slice(y,[0,1],[-1,1])),tf.float32)
+    correctPrediction=tf.reduce_sum(tf.cast(predict,tf.int32))
     accuracy=tf.reduce_mean(tf.cast(predict,tf.float32))
 #begin train
 
@@ -89,28 +95,17 @@ def multi_perceptron(trainData,validData,testData):
         #sess=tf.Session()
         sess.run(init)
 
-        '''#/debug
-        batchX, batchY = trainData.nextXY(10)
-        print(sess.run(y,feed_dict={y:batchY}))
-        print(sess.run(tf.slice(y,[0,0],[-1,1]),feed_dict={y:batchY}))
-        print(sess.run(tf.slice(y,[0,1],[-1,1]),feed_dict={y:batchY}))
-        #debug/'''
-
         prevtestAcc=0.0
         stableCounter=0#count check times for stable status
         maxCheck=2#def max check time for stable status
-        #test before
-        print("before train")
-        sum=correctPrediction.eval(feed_dict={x: xt, y: yt,keep_prob:1.0})
-        print("test correctNum=%d" % (sum))
+
         #begin train model
         print("running multi-layer perceptrons")
         t1 = time.time()
         for i in range(iterationNum):
             batchX,batchY=trainData.nextXY(batchSize)
 
-
-            if i % 50 == 0:
+            if i % 50 == 1:
                 print("step %d" % (i))
 
                 acctest=accuracy.eval(feed_dict={x:xt,y:yt,keep_prob:1.0})
@@ -118,7 +113,7 @@ def multi_perceptron(trainData,validData,testData):
                 #acctrain = accuracy.eval(feed_dict={x: batchX, y:batchY,keep_prob:1.0})
                 #print("train accuracy=%2.2f" % (acctrain))
 
-                if abs(prevtestAcc-acctest)<0.01:
+                if abs(prevtestAcc-acctest)<0.0001:
                     stableCounter = stableCounter + 1
                     if stableCounter>maxCheck:
                         break
@@ -139,7 +134,7 @@ def multi_perceptron(trainData,validData,testData):
         #an example
         pm=sess.run(model,feed_dict={x:xt,keep_prob:1.0})
         pt=sess.run(y,feed_dict={y:yt})
-        for i in range(20):
+        for i in range(len(pt)):
             print(pm[i],pt[i])
     #label of the testData
         if testData is None:
@@ -150,7 +145,7 @@ def multi_perceptron(trainData,validData,testData):
 #write predicton result
 def writePreiction(result,IDset):
     predict=[]
-    #print(result)
+    print(result)
     #print(len(result),len(IDset))
     for i in range(len(result)):
         predict.append([IDset[i],"%2.2f"%result[i][0]])
@@ -183,8 +178,8 @@ def prePareData():
     mydata.dataSet=mydata.dataSet[0:n]
     traindata=mydata
     validdata=UserTrainData(tdata)
-    traindata.initXY()
-    validdata.initXY()
+    traindata.initXY2()
+    validdata.initXY2()
     #begin
 
     print('data prepared:Selected Attribute(%d), train Model(%d),validData(%d)'%

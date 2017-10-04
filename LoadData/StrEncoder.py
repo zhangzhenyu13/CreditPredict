@@ -17,7 +17,7 @@ def PresenceCounter(col):
             else:
                 counter[s] = 1
     return counter
-def rmLowSupport(counter,rate=1.0,maxKeys=50):
+def rmLowSupport(counter,rate=1.0,maxKeys=100):
     vsum=0
     #print('again')
     for k in counter.keys():

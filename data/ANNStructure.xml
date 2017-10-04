@@ -1,7 +1,10 @@
  <!--define hidden layer nodesNum of the network-->
 <ANN>
     <L0>1024</L0>
-    <L1>1500</L1>
-    <L2>2970</L2>
-    <L3>654</L3>
+    <L1>398</L1>
+    <L2>2024</L2>
+    <L3>4900</L3>
+    <L4>2764</L4>
+    <L5>987</L5>
+
 </ANN>

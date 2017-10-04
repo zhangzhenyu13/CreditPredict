@@ -81,10 +81,20 @@ class Data(object):
         for record in dataSet:
             data.append(record[0:index])
         return data
-    def getRunTuple(self,dataBatch):
+    def pureLabels(self,dataSet):
+        data=[]
+        index=len(dataSet[0])-1
+        for record in dataSet:
+            data.append([record[index]])
+        return data
+    def getRunTuple2(self,dataBatch):
         Y = self.labelTransform(dataBatch)
         X = self.pureAttrs(dataBatch)
         return (X, Y)
+    def getRunTuple(self,dataBatch):
+        Y=self.pureLabels(dataBatch)
+        X=self.pureAttrs(dataBatch)
+        return (X,Y)
 class UserTrainData(Data):
     dataSet=None
     dataSize=0
@@ -112,7 +122,9 @@ class UserTrainData(Data):
             print("dataSize=%d,file=%s"%(self.dataSize,file))
             f.close()
     def initXY(self):
-        self.X, self.Y = self.getRunTuple(self.dataSet)
+        self.X,self.Y=self.getRunTuple(self.dataSet)
+    def initXY2(self):
+        self.X, self.Y = self.getRunTuple2(self.dataSet)
     def nextBatch(self,dataSize=None):
         if dataSize is None:
             return self.dataSet

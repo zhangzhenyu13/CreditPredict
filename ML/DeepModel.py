@@ -1,12 +1,11 @@
 #coding: utf-8
 import tensorflow as tf
-import numpy as np
 import time
 import xml.dom.minidom as xmlparser
 from LoadData.SelectRelativeAttrs import *
 from LoadData.StrEncoder import *
 from LoadData.fillStrategy import *
-import pandas as pd
+
 #load net structure from file
 def readnetStructure(inDim,outDim):
     print("netWorks Structure")
@@ -48,6 +47,7 @@ def multi_perceptron(trainData,validData,testData):
     iterationNum = 1000
     inDim=len(xt[0])
     outDim=1
+    bias_p=2#balance the importance of true postive and false negative
 #define the Graph
     x=tf.placeholder(tf.float32,[None,inDim],name='X_in')
     y=tf.placeholder(tf.float32,[None,2],name='Y_out')
@@ -73,7 +73,10 @@ def multi_perceptron(trainData,validData,testData):
     model=tf.nn.dropout(model,keep_prob)
 #define error and train goal
     #errorLayer=tf.Variable(tf.constant([model,1/(model+0.001)]),trainable=False)
-    errorLayer=model*tf.slice(y,[0,0],[-1,1])+tf.slice(y,[0,1],[-1,1])/(model+0.01)
+    errorLayer1=model*tf.slice(y,[0,0],[-1,1])+bias_p*tf.slice(y,[0,1],[-1,1])/(model+0.01)#care both tp and fp
+    errorLayer2=tf.slice(y,[0,1],[-1,1])/(model+0.01)#care only fp
+    errorLayer3=model*tf.slice(y,[0,0],[-1,1])#care only tp
+    errorLayer=errorLayer2
     loss=tf.reduce_sum(tf.square(errorLayer))
     train_step=tf.train.AdamOptimizer(learning_rate=learnRate).minimize(loss)
 # correctness counter
@@ -144,17 +147,19 @@ def multi_perceptron(trainData,validData,testData):
             return
         result=sess.run(model,feed_dict={x:testData.dataSet,keep_prob:1.0})
     writePreiction(result,testData.IDset)
+
 #write predicton result
 def writePreiction(result,IDset):
     predict=[]
     #print(result)
     #print(len(result),len(IDset))
     for i in range(len(result)):
-        predict.append([bytes(IDset[i],encoding='utf-8'),bytes("%2.2f"%(result[i][0]),encoding='utf-8')])
+        predict.append([IDset[i],"%2.2f"%result[i][0]])
         #print(predict[i])
-    f=open('../data/submission.csv','wb')
+    f=open('../data/submission.csv','w',newline='')
     writer = csv.writer(f)
-    writer.writerow([bytes('id',encoding='utf-8'),bytes('predict',encoding='utf-8')])
+    header=['id','predict']
+    writer.writerow(header)
     writer.writerows(predict)
 
 #test
@@ -192,3 +197,4 @@ def main():
 
 if __name__=="__main__":
     main()
+    #writePreiction([[0.1],[0.2],[0.3],[0.4]],['1','2','3','4'])
